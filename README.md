@@ -1,1 +1,364 @@
-Версия 1
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Калькулятор моющих средств</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    :root {
+      --primary: #2c7be5;
+      --primary-dark: #1a68d1;
+      --success: #2fcb7c;
+      --warning: #f59c1a;
+      --danger: #f55252;
+      --gray: #6c757d;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --border: #dee2e6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f7fb;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      border-bottom: 4px solid var(--primary-dark);
+    }
+    header h1 { margin: 0; font-size: 1.8em; }
+    .logo { max-width: 150px; margin-bottom: 10px; }
+    .lang-switch {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+    }
+    .lang-switch button {
+      background: none;
+      border: 1px solid white;
+      color: white;
+      padding: 5px 10px;
+      margin: 0 2px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .lang-switch button.active {
+      background: white;
+      color: var(--primary);
+    }
+    .section {
+      padding: 25px;
+      border-bottom: 1px solid var(--border);
+    }
+    h2 {
+      margin-top: 0;
+      color: var(--primary);
+      border-bottom: 2px solid var(--light);
+      padding-bottom: 8px;
+    }
+    .input-group {
+      margin: 12px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .input-group label {
+      flex: 1 1 200px;
+      display: flex;
+      align-items: center;
+    }
+    .input-group input {
+      flex: 1;
+      max-width: 150px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background: var(--primary-dark); }
+    button.success { background: var(--success); font-weight: bold; }
+    .item {
+      background: var(--light);
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 10px;
+      position: relative;
+    }
+    .remove-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--danger);
+      color: white;
+      border: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .results { font-size: 16px; }
+    .result-row { display: flex; justify-content: space-between; padding: 8px 0; }
+    .chart-container { height: 300px; margin: 20px 0; }
+    .export-btn { margin-top: 15px; background: var(--success); }
+    .warning { color: var(--danger); font-size: 14px; }
+    @media (max-width: 768px) {
+      .input-group { flex-direction: column; }
+      .input-group input { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="lang-switch">
+      <button id="lang-ru" class="active">RU</button>
+      <button id="lang-en">EN</button>
+    </div>
+    <img src="https://via.placeholder.com/150?text=LOGO" alt="Logo" class="logo"/>
+    <h1>Калькулятор экономии моющих средств</h1>
+    <p>Рассчитайте выгоду перехода на современные жидкие моющие средства</p>
+  </header>
+
+  <div class="section">
+    <h2>Общие параметры</h2>
+    <div class="input-group">
+      <label>Загрузка машины (кг): <input type="number" id="load" value="10" step="0.1"></label>
+      <label>Тариф электроэнергии (руб/кВт·ч): <input type="number" id="energyRate" value="7" step="0.1"></label>
+      <label>Рабочих часов в день: <input type="number" id="workHours" value="9" step="1"></label>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Текущие моющие средства</h2>
+    <button onclick="addCurrent()">+ Добавить средство</button>
+    <div id="currentInputs"></div>
+    <div id="currentShareWarning" class="warning" style="display:none;"></div>
+  </div>
+
+  <div class="section">
+    <h2>Наши новые средства</h2>
+    <button onclick="addNew()">+ Добавить средство</button>
+    <div id="newInputs"></div>
+    <div id="newShareWarning" class="warning" style="display:none;"></div>
+
+    <h3>Параметры стирки</h3>
+    <div class="input-group">
+      <label>Температура текущей программы (°C): <input type="number" id="tempCurrent" value="60"></label>
+      <label>Температура новой программы (°C): <input type="number" id="tempNew" value="40"></label>
+    </div>
+    <div class="input-group">
+      <label>Время текущей программы (мин): <input type="number" id="timeCurrent" value="90"></label>
+      <label>Время новой программы (мин): <input type="number" id="timeNew" value="60"></label>
+    </div>
+  </div>
+
+  <div class="section" style="text-align: center;">
+    <button onclick="calculate()" class="success">Рассчитать экономию</button>
+  </div>
+
+  <div class="section" id="resultsSection" style="display:none;">
+    <h2>Результаты расчета</h2>
+    <div class="results" id="resultContent"></div>
+    <div class="chart-container">
+      <canvas id="economyChart"></canvas>
+    </div>
+    <button onclick="exportToPDF()" class="export-btn">Экспорт в PDF</button>
+  </div>
+
+  <footer style="text-align:center; padding:20px; color:var(--gray);">
+    &copy; 2025 — Калькулятор для продаж моющих средств
+  </footer>
+</div>
+
+<script>
+  const { jsPDF } = window.jspdf;
+
+  function addCurrent() {
+    const id = Date.now();
+    const item = document.createElement('div');
+    item.className = 'item';
+    item.innerHTML = `
+      <button class="remove-btn" onclick="this.closest('.item').remove(); validateShares('current');">×</button>
+      <div class="input-group">
+        <label><input placeholder="Название" data-name="currentName${id}"></label>
+        <label>Цена за литр: <input type="number" placeholder="200" data-price="currentPrice${id}"></label>
+        <label>Расход мл/кг: <input type="number" placeholder="10" data-dosage="currentDosage${id}"></label>
+        <label>Участие %: <input type="number" value="100" data-share="currentShare${id}" oninput="validateShares('current')"></label>
+      </div>
+    `;
+    document.getElementById('currentInputs').appendChild(item);
+    validateShares('current');
+  }
+
+  function addNew() {
+    const id = Date.now();
+    const item = document.createElement('div');
+    item.className = 'item';
+    item.innerHTML = `
+      <button class="remove-btn" onclick="this.closest('.item').remove(); validateShares('new');">×</button>
+      <div class="input-group">
+        <label><input placeholder="Название" data-name="newName${id}"></label>
+        <label>Цена за литр: <input type="number" placeholder="250" data-price="newPrice${id}"></label>
+        <label>Расход мл/кг: <input type="number" placeholder="8" data-dosage="newDosage${id}"></label>
+        <label>Участие %: <input type="number" value="100" data-share="newShare${id}" oninput="validateShares('new')"></label>
+      </div>
+    `;
+    document.getElementById('newInputs').appendChild(item);
+    validateShares('new');
+  }
+
+  function validateShares(type) {
+    const inputs = document.querySelectorAll(`#${type}Inputs [data-share]`);
+    let total = 0;
+    inputs.forEach(input => total += parseFloat(input.value) || 0);
+    const warningEl = document.getElementById(`${type}ShareWarning`);
+    if (total > 100) {
+      warningEl.textContent = 'Сумма участия: ' + total.toFixed(1) + '% — превышает 100%!';
+      warningEl.style.display = 'block';
+    } else {
+      warningEl.style.display = 'none';
+    }
+  }
+
+  let economyChart = null;
+
+  function calculate() {
+    const load = parseFloat(document.getElementById('load').value);
+    const energyRate = parseFloat(document.getElementById('energyRate').value);
+    const workHours = parseFloat(document.getElementById('workHours').value);
+    const timeCurrent = parseFloat(document.getElementById('timeCurrent').value);
+    const timeNew = parseFloat(document.getElementById('timeNew').value);
+    const tempCurrent = parseFloat(document.getElementById('tempCurrent').value);
+    const tempNew = parseFloat(document.getElementById('tempNew').value);
+
+    const getCost = (prefix) => {
+      const inputs = document.querySelectorAll(`#${prefix}Inputs [data-price]`);
+      let total = 0, shareSum = 0;
+      inputs.forEach(input => {
+        const price = parseFloat(input.value) || 0;
+        const dosage = parseFloat(input.parentNode.querySelector('[data-dosage]').value) || 0;
+        const share = parseFloat(input.parentNode.querySelector('[data-share]').value) || 0;
+        shareSum += share;
+        total += price * (dosage / 1000) * (share / 100);
+      });
+      return shareSum <= 100 ? total : null;
+    };
+
+    const currentChemCost = getCost('current');
+    if (currentChemCost === null) {
+      alert("Сумма участия текущих средств > 100%");
+      return;
+    }
+
+    const newChemCost = getCost('new');
+    if (newChemCost === null) {
+      alert("Сумма участия новых средств > 100%");
+      return;
+    }
+
+    const getEnergyCost = (temp, timeMin, load, rate) => {
+      const timeHours = timeMin / 60;
+      const energy = 0.05 * temp + 0.1 * timeHours;
+      return (energy * rate) / load;
+    };
+
+    const energyCostCurrent = getEnergyCost(tempCurrent, timeCurrent, load, energyRate);
+    const energyCostNew = getEnergyCost(tempNew, timeNew, load, energyRate);
+
+    const totalCurrent = currentChemCost + energyCostCurrent;
+    const totalNew = newChemCost + energyCostNew;
+    const economyPerKg = totalCurrent - totalNew;
+
+    const minutesPerDay = workHours * 60;
+    const washesCurrent = Math.floor(minutesPerDay / timeCurrent);
+    const washesNew = Math.floor(minutesPerDay / timeNew);
+    const totalKgNew = washesNew * load;
+    const dailyEconomy = economyPerKg * totalKgNew;
+
+    document.getElementById('resultsSection').style.display = 'block';
+    document.getElementById('resultContent').innerHTML = `
+      <div class="result-row"><strong>Текущая стоимость 1 кг:</strong> <span>${totalCurrent.toFixed(2)} ₽</span></div>
+      <div style="padding-left: 15px;">— Химия: ${currentChemCost.toFixed(2)} ₽</div>
+      <div style="padding-left: 15px;">— Электроэнергия: ${energyCostCurrent.toFixed(2)} ₽</div>
+      <div class="result-row"><strong>Новая стоимость 1 кг:</strong> <span>${totalNew.toFixed(2)} ₽</span></div>
+      <div style="padding-left: 15px;">— Химия: ${newChemCost.toFixed(2)} ₽</div>
+      <div style="padding-left: 15px;">— Электроэнергия: ${energyCostNew.toFixed(2)} ₽</div>
+      <div class="result-row" style="color: var(--success);"><strong>Экономия на 1 кг:</strong> <span>${economyPerKg.toFixed(2)} ₽</span></div>
+      <div class="result-row"><strong>Стирок в день:</strong></div>
+      <div style="padding-left: 15px;">— Старая программа: ${washesCurrent}</div>
+      <div style="padding-left: 15px;">— Новая программа: ${washesNew}</div>
+      <div style="padding-left: 15px;">— Объем стирки: ${totalKgNew} кг</div>
+      <div class="result-row" style="color: var(--success);"><strong>Экономия в день:</strong> <span>${dailyEconomy.toFixed(2)} ₽</span></div>
+      <div class="result-row"><strong>Экономия в месяц:</strong> ${(dailyEconomy * 30).toFixed(2)} ₽</div>
+      <div class="result-row"><strong>Экономия в год:</strong> ${(dailyEconomy * 365).toFixed(2)} ₽</div>
+    `;
+
+    const ctx = document.getElementById('economyChart').getContext('2d');
+    if (economyChart) economyChart.destroy();
+    economyChart = new Chart(ctx, {
+      type: 'bar',
+       {
+        labels: ['Химия (старая)', 'Химия (новая)', 'Электроэнергия (старая)', 'Электроэнергия (новая)'],
+        datasets: [{
+          label: 'Стоимость на 1 кг (₽)',
+           [currentChemCost, newChemCost, energyCostCurrent, energyCostNew],
+          backgroundColor: ['#f59c1a', '#2fcb7c', '#f55252', '#2c7be5']
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  function exportToPDF() {
+    const doc = new jsPDF();
+    const result = document.getElementById('resultContent');
+    const lines = result.innerText.split('\n').filter(l => l.trim().length > 0);
+    doc.setFontSize(16);
+    doc.text("Результаты расчета", 14, 20);
+    doc.setFontSize(12);
+    lines.forEach((line, i) => doc.text(line, 14, 40 + i * 10));
+    const tableData = [
+      ['Показатель', 'Значение'],
+      ['Экономия на 1 кг', `${(parseFloat(result.children[6].querySelector('span').innerText)).toFixed(2)} ₽`],
+      ['Экономия в день', `${(parseFloat(result.children[10].querySelector('span').innerText)).toFixed(2)} ₽`],
+      ['Экономия в год', `${(parseFloat(result.children[12].querySelector('span').innerText)).toFixed(2)} ₽`],
+    ];
+    doc.autoTable({ body: tableData, startY: 40 + lines.length * 10 + 10 });
+    doc.save("экономия_моющие.pdf");
+  }
+
+  addCurrent();
+  addNew();
+</script>
+</body>
+</html>
