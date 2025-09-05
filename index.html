@@ -352,3 +352,13 @@
       ['Экономия на 1 кг', `${(parseFloat(result.children[6].querySelector('span').innerText)).toFixed(2)} ₽`],
       ['Экономия в день', `${(parseFloat(result.children[10].querySelector('span').innerText)).toFixed(2)} ₽`],
       ['Экономия в год', `${(parseFloat(result.children[12].querySelector('span').innerText)).toFixed(2)} ₽`],
+    ];
+    doc.autoTable({ body: tableData, startY: 40 + lines.length * 10 + 10 });
+    doc.save("экономия_моющие.pdf");
+  }
+
+  addCurrent();
+  addNew();
+</script>
+</body>
+</html>
